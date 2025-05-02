@@ -4,7 +4,7 @@
     "keywords": [
         "text-to-mp3",
         "tts",
-        "llm audio",
+        "llm audio"
     ],
     "homepage": "https://audio.autonomo.dev/",
     "license": "SBL",
@@ -19,7 +19,7 @@
         }
     ],
     "require": {
-        "php": ">=8.1",
+        "php": ">=8.4",
         "ext-json": "*",
         "minicli/minicli": "^4.2",
         "pecee/simple-router": "^5.4",
@@ -30,24 +30,26 @@
         "illuminate/database": "^11.37",
         "illuminate/events": "^11.37",
         "illuminate/filesystem": "^11.37",
-        "0.0.0/composer-include-files": "^1.6"
+        "0.0.0/composer-include-files": "^1.6",
+        "phpexperts/gcloud-auth": "^1.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "*",
+        "phpunit/phpunit": "12.*",
         "phpstan/phpstan": "*",
         "friendsofphp/php-cs-fixer": "*",
         "symfony/var-dumper": "*",
         "povils/phpmnd": "*",
-        "squizlabs/php_codesniffer": "*"
+        "squizlabs/php_codesniffer": "*",
+        "phpexperts/dockerize": "^13.0"
     },
     "autoload": {
         "psr-4": {
             "PHPExperts\\MiniApiBase\\" : ".framework/",
-            "PHPExperts\\workdir\\": "src/"
+            "Autonomo\\AIInterviewer\\": "src/"
         }
     },
     "autoload-dev": {
-        "psr-4": { "PHPExperts\\MiniApiBase\\Tests\\" : "tests/" }
+        "psr-4": { "Autonomo\\AIInterviewer\\Tests\\" : "tests/" }
     },
     "config": {
         "classmap-authoritative": true,

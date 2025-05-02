@@ -1,9 +1,9 @@
-# Auto AI Audio API
+# AI Interviewer API
 
 [![Maintainability]()]()
 [![Test Coverage]()]()
 
-Auto AI Audio API is a project by Autonomo by Autonomous Programming, LLC, 
+AI Interviewer API is a project by Autonomo by Autonomous Programming, LLC, 
 meant to ease the creation of playable audio from text of any size, from
 tiny snippets to complete audiobooks.
 
@@ -47,4 +47,4 @@ CEO: Autonomo by Autonomous Programming, LLC
 
 ## License
 
-Small Business license. Please see the [license file](LICENSE.md) for more information.
+This is proprietary code. All rights are reserved.

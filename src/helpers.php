@@ -86,3 +86,42 @@ function csrf_token(): ?string
 
     return null;
 }
+
+/**
+ * Finds the root path of a Composer project by looking for the composer.json file.
+ *
+ * @param string|null $startingPath The directory path to start searching from (defaults to current working directory)
+ * @return string The absolute path to the project root
+ * @throws RuntimeException If composer.json cannot be found
+ */
+function findProjectRoot(?string $startingPath = null): string
+{
+    $currentPath = $startingPath ?: getcwd();
+
+    // Normalize the path (remove trailing slashes, resolve relative paths)
+    $currentPath = realpath($currentPath);
+
+    if ($currentPath === false) {
+        throw new RuntimeException("The starting path does not exist");
+    }
+
+    // Check if we've reached the filesystem root
+    while ($currentPath !== '/' && $currentPath !== '') {
+        // Check for composer.json in the current directory
+        if (file_exists($currentPath . DIRECTORY_SEPARATOR . 'composer.json')) {
+            return $currentPath;
+        }
+
+        // Move up one directory level
+        $parentPath = dirname($currentPath);
+
+        // Prevent infinite loop if we can't go up further
+        if ($parentPath === $currentPath) {
+            break;
+        }
+
+        $currentPath = $parentPath;
+    }
+
+    throw new RuntimeException('Could not find composer.json in any parent directory');
+}

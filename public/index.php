@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 
 /**
- * This file is part of Auto AI Audio,
+ * This file is part of AI Interviewer,
  * an Autonomo by Autonomous Programming, LLC, project.
  *
  * Copyright © 2025 Autonomous Programming, LLC
@@ -38,7 +38,7 @@ header('Access-Control-Allow-Origin: *');
  * Can be overwritten by using the namespace config option on your routes.
  */
 
-SimpleRouter::setDefaultNamespace('\Demo\Controllers');
+SimpleRouter::setDefaultNamespace('\Autonomo\AIInterviewer');
 
 // Start the routing
 SimpleRouter::start();
