@@ -4,8 +4,280 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Autonomo Interviewer</title>
+    <!-- Include jQuery from CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+    <!-- Include CryptoJS for secure storage -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <link rel="stylesheet" href="/css/main.css" />
 </head>
 <body>
 <h1>Autonomo Interviewer</h1>
+
+<div class="api-config">
+    <h3>DeepSeek R1 API Configuration</h3>
+    <input type="password" id="apiKeyInput" placeholder="Enter your DeepSeek R1 API key">
+    <div style="display: flex; gap: 10px;">
+        <button id="saveApiKey">Save API Key</button>
+        <button id="testConnection">Test Connection</button>
+        <button id="clearApiKey">Clear Saved Key</button>
+    </div>
+    <p id="apiKeyStatus">No API key saved</p>
+    <div class="advanced-options" id="showAdvanced">Show Advanced Options</div>
+    <div class="options-container" id="advancedOptions">
+        <label for="modelVersion">Model Version:</label>
+        <select id="modelVersion">
+            <option value="deepseek-chat" selected>DeepSeek Chat</option>
+            <option value="deepseek-reasoner">DeepSeek Reasoner</option>
+        </select>
+
+        <label for="temperature">Temperature (0-1):</label>
+        <input type="number" id="temperature" min="0" max="1" step="0.1" value="0.7">
+
+        <label for="maxTokens">Max Tokens:</label>
+        <input type="number" id="maxTokens" min="1" max="8000" value="2000">
+    </div>
+</div>
+
+<div class="prompt-container">
+    <textarea id="promptArea" placeholder="Please type a few sentences for the topic of and instructions for the interview."></textarea>
+    <div style="display: flex; justify-content: flex-end; margin-top: 10px;">
+        <button id="submitBtn" class="submit-btn">→</button>
+    </div>
+</div>
+
+<div class="teleprompter-container">
+    <div id="teleprompterText" class="teleprompter-text">
+        Your interview text will appear here after submission...
+    </div>
+</div>
+
+<div class="controls">
+    <button id="playBtn" class="control-btn">Play</button>
+    <button id="pauseBtn" class="control-btn">Pause</button>
+    <button id="resetBtn" class="control-btn">Reset</button>
+    <button id="speedUpBtn" class="control-btn">Speed +</button>
+    <button id="slowDownBtn" class="control-btn">Speed -</button>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Constants
+        const STORAGE_KEY = 'auto_interviewer_config';
+        const ENCRYPTION_SECRET = 'autonomo_encryption_key_' + navigator.userAgent.replace(/\D+/g, '');
+        let scrollSpeed = 60; // Default animation duration in seconds
+
+        // Toggle advanced options
+        $('#showAdvanced').click(function() {
+            $('#advancedOptions').toggle();
+            const text = $('#advancedOptions').is(':visible') ? 'Hide Advanced Options' : 'Show Advanced Options';
+            $('#showAdvanced').text(text);
+        });
+
+        // API Key Management with Encryption
+        function encryptApiKey(apiKey) {
+            return CryptoJS.AES.encrypt(apiKey, ENCRYPTION_SECRET).toString();
+        }
+
+        function decryptApiKey(encryptedKey) {
+            const bytes = CryptoJS.AES.decrypt(encryptedKey, ENCRYPTION_SECRET);
+            return bytes.toString(CryptoJS.enc.Utf8);
+        }
+
+        function saveApiKey(apiKey) {
+            if (!apiKey) return false;
+
+            const config = {
+                apiKey: encryptApiKey(apiKey),
+                timestamp: new Date().getTime(),
+                modelVersion: $('#modelVersion').val(),
+                temperature: $('#temperature').val(),
+                maxTokens: $('#maxTokens').val()
+            };
+
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+            updateApiKeyStatus(true);
+            return true;
+        }
+
+        function getApiKey() {
+            try {
+                const config = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                if (!config || !config.apiKey) return null;
+
+                // Load saved settings
+                if (config.modelVersion) $('#modelVersion').val(config.modelVersion);
+                if (config.temperature) $('#temperature').val(config.temperature);
+                if (config.maxTokens) $('#maxTokens').val(config.maxTokens);
+
+                return decryptApiKey(config.apiKey);
+            } catch (e) {
+                console.error('Error retrieving API key:', e);
+                return null;
+            }
+        }
+
+        function updateApiKeyStatus(saved) {
+            if (saved) {
+                const config = JSON.parse(localStorage.getItem(STORAGE_KEY));
+                const date = new Date(config.timestamp).toLocaleString();
+                $('#apiKeyStatus').html(`<span style="color: #68d391;">✓ API key saved on ${date}</span>`);
+
+                return true;
+            } else {
+                $('#apiKeyStatus').html('No API key saved');
+
+                return false;
+            }
+        }
+
+        // Check if API key exists on load
+        if (getApiKey()) {
+            updateApiKeyStatus(true);
+            $('.api-config').hide()
+
+        }
+
+        // Save API Key Button
+        $('#saveApiKey').click(function() {
+            const apiKey = $('#apiKeyInput').val().trim();
+            if (apiKey) {
+                if (saveApiKey(apiKey)) {
+                    $('#apiKeyInput').val('');
+                    alert('API key saved successfully!');
+                }
+            } else {
+                alert('Please enter an API key.');
+            }
+        });
+
+        // Clear API Key Button
+        $('#clearApiKey').click(function() {
+            localStorage.removeItem(STORAGE_KEY);
+            updateApiKeyStatus(false);
+            alert('API key cleared successfully.');
+        });
+
+        // Test Connection Button
+        $('#testConnection').click(function() {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                alert('No API key saved. Please save your API key first.');
+                return;
+            }
+
+            $('#apiKeyStatus').html('<span style="color: #f6e05e;">Testing connection...</span>');
+
+            // Simple test request to check if the API key works
+            const testPrompt = "Say 'Connection successful!' if you can read this message.";
+            callDeepSeekAPI(testPrompt, { max_tokens: 10 })
+                .done(function(response) {
+                    $('#apiKeyStatus').html('<span style="color: #68d391;">✓ Connection successful! API key is valid.</span>');
+                })
+                .fail(function(error) {
+                    $('#apiKeyStatus').html(`<span style="color: #fc8181;">✗ Connection failed: ${error}</span>`);
+                });
+        });
+
+        // DeepSeek R1 API Client
+        function callDeepSeekAPI(prompt, options = {}) {
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                return $.Deferred().reject('No API key available. Please configure your API key first.').promise();
+            }
+
+            const modelVersion = options.model || $('#modelVersion').val();
+            const temperature = parseFloat(options.temperature || $('#temperature').val());
+            const maxTokens = parseInt(options.max_tokens || $('#maxTokens').val());
+
+            // DeepSeek API endpoint
+            const endpoint = 'https://api.deepseek.com/v1/chat/completions';
+
+            const requestData = {
+                model: modelVersion,
+                messages: [{ role: "user", content: prompt }],
+                temperature: temperature,
+                stream: false
+            };
+
+            return $.ajax({
+                url: endpoint,
+                type: 'POST',
+                contentType: 'application/json',
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                data: JSON.stringify(requestData),
+                dataType: 'json'
+            }).then(function(data) {
+                // Extract the response text from the API response
+                if (data && data.choices && data.choices.length > 0) {
+                    return data.choices[0].message.content;
+                }
+                throw new Error('Unexpected API response format');
+            });
+        }
+
+        // Submit button click handler
+        $('#submitBtn').click(function() {
+            const prompt = $('#promptArea').val().trim();
+            if (!prompt) {
+                $('#teleprompterText').text("Please enter a prompt before submitting.");
+                return;
+            }
+
+            const apiKey = getApiKey();
+            if (!apiKey) {
+                $('#teleprompterText').text("Please configure your DeepSeek R1 API key first.");
+                return;
+            }
+
+            // Show loading indicator
+            $('#teleprompterText').text("Sending request to DeepSeek R1...");
+
+            // Call the DeepSeek API
+            callDeepSeekAPI(prompt)
+                .done(function(response) {
+                    // Update teleprompter with response
+                    $('#teleprompterText').text(response);
+
+                    // Reset animation
+                    $('#teleprompterText').removeClass('scrolling');
+                    $('#teleprompterText')[0].offsetWidth; // Trigger reflow
+                })
+                .fail(function(error) {
+                    $('#teleprompterText').text(`Error: ${error}`);
+                });
+        });
+
+        // Play button
+        $('#playBtn').click(function() {
+            $('#teleprompterText').css('animation-duration', scrollSpeed + 's');
+            $('#teleprompterText').addClass('scrolling');
+        });
+
+        // Pause button
+        $('#pauseBtn').click(function() {
+            $('#teleprompterText').removeClass('scrolling');
+        });
+
+        // Reset button
+        $('#resetBtn').click(function() {
+            $('#teleprompterText').removeClass('scrolling');
+            $('#teleprompterText')[0].offsetWidth; // Trigger reflow
+        });
+
+        // Speed up button
+        $('#speedUpBtn').click(function() {
+            scrollSpeed = Math.max(10, scrollSpeed - 10);
+            $('#teleprompterText').css('animation-duration', scrollSpeed + 's');
+        });
+
+        // Slow down button
+        $('#slowDownBtn').click(function() {
+            scrollSpeed += 10;
+            $('#teleprompterText').css('animation-duration', scrollSpeed + 's');
+        });
+    });
+</script>
 </body>
 </html>
